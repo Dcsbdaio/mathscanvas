@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MathsCanvas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #ffffff;
+      --bg2: #f5f5f3;
+      --bg3: #eeede9;
+      --text: #1a1a1a;
+      --text2: #555550;
+      --text3: #999994;
+      --border: rgba(0,0,0,0.12);
+      --border2: rgba(0,0,0,0.22);
+      --radius: 8px;
+      --radius-lg: 12px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1c1c1a;
+        --bg2: #242422;
+        --bg3: #2c2c2a;
+        --text: #f0efe9;
+        --text2: #aaa89f;
+        --text3: #666660;
+        --border: rgba(255,255,255,0.1);
+        --border2: rgba(255,255,255,0.18);
+      }
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 1.5rem 1rem;
+    }
+
+    #app {
+      max-width: 860px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .header {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      padding-bottom: 0.75rem;
+      border-bottom: 0.5px solid var(--border);
+    }
+
+    .header h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 24px;
+      font-weight: 400;
+      letter-spacing: -0.3px;
+    }
+
+    .header span {
+      font-size: 12px;
+      color: var(--text3);
+      font-family: 'DM Mono', monospace;
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .stat-card {
+      background: var(--bg2);
+      border-radius: var(--radius);
+      padding: 12px;
+      text-align: center;
+    }
+
+    .stat-label {
+      font-size: 10px;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 22px;
+      font-weight: 500;
+      font-family: 'DM Mono', monospace;
+    }
+
+    .controls-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .field label {
+      display: block;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text3);
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    select {
+      width: 100%;
+      padding: 9px 30px 9px 10px;
+      font-size: 14px;
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      border: 0.5px solid var(--border2);
+      border-radius: var(--radius);
+      color: var(--text);
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+    }
+
+    .btn-primary {
+      padding: 9px 20px;
+      font-size: 14px;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      background: var(--text);
+      color: var(--bg);
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.15s;
+    }
+
+    .btn-primary:hover { opacity: 0.82; }
+    .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .question-card {
+      background: var(--bg2);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1rem 1.25rem;
+      min-height: 64px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .q-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text3);
+      font-weight: 500;
+      white-space: nowrap;
+      margin-top: 3px;
+      font-family: 'DM Mono', monospace;
+    }
+
+    .q-text { font-size: 15px; line-height: 1.65; flex: 1; }
+
+    .diff-badge {
+      font-size: 11px;
+      padding: 2px 9px;
+      border-radius: 20px;
+      font-weight: 500;
+      font-family: 'DM Mono', monospace;
+      white-space: nowrap;
+      align-self: flex-start;
+    }
+
+    .diff-easy { background: #EAF3DE; color: #3B6D11; }
+    .diff-medium { background: #FAEEDA; color: #854F0B; }
+    .diff-hard { background: #FCEBEB; color: #A32D2D; }
+
+    .canvas-section { display: flex; flex-direction: column; gap: 8px; }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tool-btn {
+      padding: 5px 13px;
+      font-size: 12px;
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      border: 0.5px solid var(--border2);
+      border-radius: var(--radius);
+      cursor: pointer;
+      color: var(--text2);
+      transition: all 0.1s;
+    }
+
+    .tool-btn.active, .tool-btn:hover {
+      background: var(--bg3);
+      color: var(--text);
+      border-color: var(--border2);
+    }
+
+    .divider {
+      width: 0.5px;
+      height: 20px;
+      background: var(--border);
+      margin: 0 2px;
+    }
+
+    .color-dot-wrap {
+      position: relative;
+      width: 24px;
+      height: 24px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .color-dot-wrap .dot {
+      position: absolute;
+      inset: 3px;
+      border-radius: 50%;
+      transition: transform 0.1s;
+    }
+
+    .color-dot-wrap .ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      transition: border-color 0.1s;
+    }
+
+    .color-dot-wrap.active .ring { border-color: #888; }
+    .color-dot-wrap.active .dot { transform: scale(0.78); }
+
+    .canvas-wrapper {
+      position: relative;
+      border: 0.5px solid var(--border2);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      background: var(--bg);
+      touch-action: none;
+      cursor: crosshair;
+    }
+
+    #mainCanvas {
+      display: block;
+      width: 100%;
+      height: 400px;
+      touch-action: none;
+    }
+
+    .canvas-hint {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 13px;
+      color: var(--text3);
+      pointer-events: none;
+      text-align: center;
+      line-height: 2;
+    }
+
+    .action-row {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .btn-secondary {
+      padding: 8px 16px;
+      font-size: 13px;
+      font-family: 'DM Sans', sans-serif;
+      background: transparent;
+      border: 0.5px solid var(--border2);
+      border-radius: var(--radius);
+      cursor: pointer;
+      color: var(--text2);
+      transition: all 0.15s;
+    }
+
+    .btn-secondary:hover { background: var(--bg2); color: var(--text); }
+
+    .feedback-card {
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      display: none;
+    }
+
+    .feedback-card.visible { display: block; }
+
+    .feedback-header {
+      padding: 10px 1.25rem;
+      border-bottom: 0.5px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg2);
+    }
+
+    .feedback-status {
+      font-size: 11px;
+      font-weight: 500;
+      font-family: 'DM Mono', monospace;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    .status-correct { background: #EAF3DE; color: #3B6D11; }
+    .status-partial { background: #FAEEDA; color: #854F0B; }
+    .status-incorrect { background: #FCEBEB; color: #A32D2D; }
+    .status-clarify { background: #E6F1FB; color: #185FA5; }
+    .status-loading { background: var(--bg3); color: var(--text2); }
+
+    .feedback-meta { font-size: 12px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+    .feedback-body {
+      padding: 1rem 1.25rem;
+      font-size: 14px;
+      line-height: 1.75;
+      white-space: pre-wrap;
+    }
+
+    .error-banner {
+      font-size: 12px;
+      color: #A32D2D;
+      font-family: 'DM Mono', monospace;
+      padding: 7px 12px;
+      background: #FCEBEB;
+      border-radius: var(--radius);
+      display: none;
+    }
+
+    .size-label {
+      font-size: 12px;
+      color: var(--text3);
+      font-family: 'DM Mono', monospace;
+      min-width: 28px;
+    }
+
+    input[type=range] {
+      width: 70px;
+      accent-color: var(--text);
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .loading-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--text2);
+      animation: blink 1s ease-in-out infinite;
+      margin: 0 2px;
+    }
+
+    .loading-dot:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dot:nth-child(3) { animation-delay: 0.4s; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <h1>MathsCanvas</h1>
+    <span>O-Level Singapore · AI-powered</span>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Questions done</div>
+      <div class="stat-value" id="statTotal">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg score</div>
+      <div class="stat-value" id="statAvg">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Weak topic</div>
+      <div class="stat-value" id="statWeak" style="font-size:13px;padding-top:5px;">—</div>
+    </div>
+  </div>
+
+  <div class="controls-row">
+    <div class="field">
+      <label>Topic</label>
+      <select id="topicSelect">
+        <option value="Algebra">Algebra</option>
+        <option value="Geometry">Geometry</option>
+        <option value="Trigonometry">Trigonometry</option>
+        <option value="Probability">Probability</option>
+        <option value="Statistics">Statistics</option>
+        <option value="Mensuration">Mensuration</option>
+        <option value="Matrices">Matrices</option>
+        <option value="Vectors">Vectors</option>
+        <option value="Graphs and Functions">Graphs and Functions</option>
+        <option value="Number Theory">Number Theory</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Difficulty</label>
+      <select id="diffSelect">
+        <option value="Easy">Easy</option>
+        <option value="Medium" selected>Medium</option>
+        <option value="Hard">Hard</option>
+      </select>
+    </div>
+    <button class="btn-primary" id="btnGenerate" onclick="generateQuestion()">Generate question</button>
+  </div>
+
+  <div class="error-banner" id="errorBanner"></div>
+
+  <div class="question-card" id="questionCard">
+    <span class="q-label">Q</span>
+    <span class="q-text" id="questionText" style="color:var(--text3);font-style:italic;">Choose a topic and difficulty, then generate a question.</span>
+  </div>
+
+  <div class="canvas-section">
+    <div class="toolbar">
+      <button class="tool-btn active" id="toolPen" onclick="setTool('pen')">Pen</button>
+      <button class="tool-btn" id="toolEraser" onclick="setTool('eraser')">Eraser</button>
+      <div class="divider"></div>
+      <div class="color-dot-wrap active" id="dotBlack" onclick="setColor('#1a1a1a','dotBlack')">
+        <div class="dot" style="background:#1a1a1a;"></div>
+        <div class="ring"></div>
+      </div>
+      <div class="color-dot-wrap" id="dotBlue" onclick="setColor('#185FA5','dotBlue')">
+        <div class="dot" style="background:#185FA5;"></div>
+        <div class="ring"></div>
+      </div>
+      <div class="color-dot-wrap" id="dotRed" onclick="setColor('#A32D2D','dotRed')">
+        <div class="dot" style="background:#A32D2D;"></div>
+        <div class="ring"></div>
+      </div>
+      <div class="color-dot-wrap" id="dotGreen" onclick="setColor('#3B6D11','dotGreen')">
+        <div class="dot" style="background:#3B6D11;"></div>
+        <div class="ring"></div>
+      </div>
+      <div class="divider"></div>
+      <input type="range" min="1" max="14" value="2" id="sizeSlider" oninput="setSize(this.value)">
+      <span class="size-label" id="sizeLabel">2px</span>
+    </div>
+
+    <div class="canvas-wrapper" id="canvasWrapper">
+      <canvas id="mainCanvas"></canvas>
+      <div class="canvas-hint" id="canvasHint">Generate a question above,<br>then write your working here</div>
+    </div>
+
+    <div class="action-row">
+      <button class="btn-secondary" onclick="clearCanvas()">Clear</button>
+      <button class="btn-primary" id="btnSubmit" onclick="submitAnswer()" disabled>Submit working</button>
+    </div>
+  </div>
+
+  <div class="feedback-card" id="feedbackCard">
+    <div class="feedback-header">
+      <span class="feedback-status status-loading" id="feedbackStatus">
+        <span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span>
+      </span>
+      <span class="feedback-meta" id="feedbackMeta"></span>
+    </div>
+    <div class="feedback-body" id="feedbackBody"></div>
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('mainCanvas');
+  const ctx = canvas.getContext('2d');
+  const wrapper = document.getElementById('canvasWrapper');
+
+  let isDrawing = false, tool = 'pen', currentColor = '#1a1a1a', brushSize = 2;
+  let lastX = 0, lastY = 0, hasDrawing = false;
+  let currentQuestion = '', currentTopic = '', currentDiff = '';
+  let session = { total: 0, scores: [], topicScores: {} };
+
+  function resizeCanvas() {
+    const rect = wrapper.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = 400 * dpr;
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = '400px';
+    ctx.scale(dpr, dpr);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+  }
+
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - rect.left, y: src.clientY - rect.top };
+  }
+
+  function startDraw(e) {
+    e.preventDefault();
+    isDrawing = true;
+    const p = getPos(e);
+    lastX = p.x; lastY = p.y;
+  }
+
+  function draw(e) {
+    if (!isDrawing) return;
+    e.preventDefault();
+    const p = getPos(e);
+    ctx.beginPath();
+    if (tool === 'eraser') {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.lineWidth = brushSize * 6;
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = currentColor;
+      ctx.lineWidth = brushSize;
+    }
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    lastX = p.x; lastY = p.y;
+    if (!hasDrawing) {
+      hasDrawing = true;
+      document.getElementById('canvasHint').style.display = 'none';
+      document.getElementById('btnSubmit').disabled = !currentQuestion;
+    }
+  }
+
+  function stopDraw() { isDrawing = false; }
+
+  canvas.addEventListener('mousedown', startDraw);
+  canvas.addEventListener('mousemove', draw);
+  canvas.addEventListener('mouseup', stopDraw);
+  canvas.addEventListener('mouseleave', stopDraw);
+  canvas.addEventListener('touchstart', startDraw, { passive: false });
+  canvas.addEventListener('touchmove', draw, { passive: false });
+  canvas.addEventListener('touchend', stopDraw);
+
+  function setTool(t) {
+    tool = t;
+    document.getElementById('toolPen').classList.toggle('active', t === 'pen');
+    document.getElementById('toolEraser').classList.toggle('active', t === 'eraser');
+    wrapper.style.cursor = t === 'eraser' ? 'cell' : 'crosshair';
+  }
+
+  function setColor(c, id) {
+    currentColor = c;
+    document.querySelectorAll('.color-dot-wrap').forEach(d => d.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    setTool('pen');
+  }
+
+  function setSize(v) {
+    brushSize = parseInt(v);
+    document.getElementById('sizeLabel').textContent = v + 'px';
+  }
+
+  function clearCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    hasDrawing = false;
+    document.getElementById('canvasHint').style.display = currentQuestion ? 'none' : '';
+    document.getElementById('btnSubmit').disabled = true;
+    document.getElementById('feedbackCard').classList.remove('visible');
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('errorBanner');
+    el.textContent = 'Error: ' + msg;
+    el.style.display = 'block';
+    setTimeout(() => el.style.display = 'none', 7000);
+  }
+
+  async function generateQuestion() {
+    const topic = document.getElementById('topicSelect').value;
+    const diff = document.getElementById('diffSelect').value;
+    const btn = document.getElementById('btnGenerate');
+
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+    document.getElementById('questionText').textContent = 'Generating question...';
+    document.getElementById('questionText').style.color = 'var(--text3)';
+    document.getElementById('questionText').style.fontStyle = 'italic';
+    document.getElementById('feedbackCard').classList.remove('visible');
+    const existingBadge = document.querySelector('.diff-badge');
+    if (existingBadge) existingBadge.remove();
+    clearCanvas();
+
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic, difficulty: diff })
+      });
+
+      if (!res.ok) throw new Error('Server error ' + res.status);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      currentQuestion = data.question;
+      currentTopic = topic;
+      currentDiff = diff;
+
+      document.getElementById('questionText').textContent = data.question;
+      document.getElementById('questionText').style.color = 'var(--text)';
+      document.getElementById('questionText').style.fontStyle = 'normal';
+
+      const badge = document.createElement('span');
+      badge.className = 'diff-badge diff-' + diff.toLowerCase();
+      badge.textContent = diff + ' · ' + (data.marks || 2) + 'm';
+      document.getElementById('questionCard').appendChild(badge);
+      document.getElementById('canvasHint').style.display = 'none';
+
+    } catch (err) {
+      document.getElementById('questionText').textContent = 'Failed to generate. Please try again.';
+      showError(err.message);
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Generate question';
+  }
+
+  async function submitAnswer() {
+    if (!currentQuestion || !hasDrawing) return;
+    const btn = document.getElementById('btnSubmit');
+    btn.disabled = true;
+    btn.textContent = 'Analysing...';
+
+    const fc = document.getElementById('feedbackCard');
+    const fs = document.getElementById('feedbackStatus');
+    const fb = document.getElementById('feedbackBody');
+    const fm = document.getElementById('feedbackMeta');
+
+    fc.classList.add('visible');
+    fs.className = 'feedback-status status-loading';
+    fs.innerHTML = '<span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span>';
+    fb.textContent = '';
+    fm.textContent = '';
+
+    try {
+      const imageBase64 = canvas.toDataURL('image/png').split(',')[1];
+
+      const res = await fetch('/api/mark', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: currentQuestion, difficulty: currentDiff, topic: currentTopic, imageBase64 })
+      });
+
+      if (!res.ok) throw new Error('Server error ' + res.status);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      const statusMap = {
+        correct: ['Correct', 'status-correct'],
+        partial: ['Partial', 'status-partial'],
+        incorrect: ['Incorrect', 'status-incorrect'],
+        clarify: ['Needs clarification', 'status-clarify']
+      };
+
+      const [label, cls] = statusMap[data.status] || ['Unknown', 'status-loading'];
+      fs.className = 'feedback-status ' + cls;
+      fs.textContent = label;
+      fm.textContent = 'Score: ' + data.score + '/5 · ' + data.mistake_type;
+      fb.textContent = data.verdict + '\n\n' + data.feedback;
+
+      session.total++;
+      session.scores.push(data.score);
+      if (!session.topicScores[currentTopic]) session.topicScores[currentTopic] = [];
+      session.topicScores[currentTopic].push(data.score);
+      updateStats();
+
+    } catch (err) {
+      fs.className = 'feedback-status status-clarify';
+      fs.textContent = 'Error';
+      fb.textContent = 'Could not analyse working. Please try again.';
+      showError(err.message);
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Submit working';
+  }
+
+  function updateStats() {
+    document.getElementById('statTotal').textContent = session.total;
+    const avg = session.scores.reduce((a, b) => a + b, 0) / session.scores.length;
+    document.getElementById('statAvg').textContent = avg.toFixed(1);
+
+    let weakTopic = '—', lowestAvg = Infinity;
+    for (const [t, scores] of Object.entries(session.topicScores)) {
+      const a = scores.reduce((x, y) => x + y, 0) / scores.length;
+      if (a < lowestAvg) { lowestAvg = a; weakTopic = t; }
+    }
+    document.getElementById('statWeak').textContent = weakTopic;
+  }
+</script>
+</body>
+</html>

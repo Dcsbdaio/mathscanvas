@@ -1,0 +1,10 @@
+{
+  "name": "mathscanvas",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "groq-sdk": "^0.3.3"
+  }
+}
