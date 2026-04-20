@@ -297,6 +297,26 @@
     .btn-submit:hover { opacity: 0.82; }
     .btn-submit:disabled { opacity: 0.35; cursor: not-allowed; }
 
+    /* type mode textarea */
+    #typeArea {
+      display: none;
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      padding: 20px;
+      font-size: 15px; font-family: var(--mono);
+      line-height: 1.8;
+      background: var(--canvas-bg);
+      color: var(--ink);
+      border: none; outline: none; resize: none;
+      border-radius: var(--r-lg);
+    }
+    #typeArea.visible { display: block; }
+    #typeArea::placeholder { color: var(--ink3); }
+
+    /* dim draw-only controls in type mode */
+    .draw-only { transition: opacity 0.15s; }
+    .type-mode .draw-only { opacity: 0.25; pointer-events: none; }
+
     /* canvas */
     .canvas-area {
       flex: 1; position: relative; overflow: hidden; touch-action: none;
@@ -452,11 +472,12 @@
   <!-- RIGHT PANEL -->
   <div id="right">
     <div class="topbar">
-      <button class="tool-btn active" id="toolPen" onclick="setTool('pen')">Pen</button>
-      <button class="tool-btn" id="toolEraser" onclick="setTool('eraser')">Eraser</button>
+      <button class="tool-btn active" id="toolPen" onclick="setTool('pen')" class="draw-only">Pen</button>
+      <button class="tool-btn" id="toolEraser" onclick="setTool('eraser')" class="draw-only">Eraser</button>
+      <button class="tool-btn" id="toolType" onclick="setInputMode('type')">Type</button>
       <div class="sep"></div>
 
-      <div class="dot-wrap active" id="dotBlack" onclick="setColor('#1a1917','dotBlack')">
+      <div class="dot-wrap active draw-only" id="dotBlack" onclick="setColor('#1a1917','dotBlack')">
         <div class="dot" style="background:#1a1917;"></div>
         <div class="ring"></div>
         <div class="tooltip">Black</div>
@@ -477,10 +498,10 @@
         <div class="tooltip">Green</div>
       </div>
 
-      <div class="sep"></div>
-      <div class="brush-preview"><div class="brush-dot" id="brushDot" style="width:2px;height:2px;"></div></div>
-      <input type="range" min="1" max="16" value="2" id="sizeSlider" oninput="setSize(this.value)">
-      <span class="size-lbl" id="sizeLbl">2px</span>
+      <div class="sep draw-only"></div>
+      <div class="brush-preview draw-only"><div class="brush-dot" id="brushDot" style="width:2px;height:2px;"></div></div>
+      <input type="range" min="1" max="16" value="2" id="sizeSlider" oninput="setSize(this.value)" class="draw-only">
+      <span class="size-lbl draw-only" id="sizeLbl">2px</span>
 
       <div class="spacer"></div>
       <div class="topbar-right">
@@ -492,6 +513,7 @@
 
     <div class="canvas-area" id="canvasArea">
       <canvas id="mainCanvas"></canvas>
+      <textarea id="typeArea" placeholder="Type your working here…&#10;&#10;e.g.&#10;2x + 5 = 11&#10;2x = 6&#10;x = 3"></textarea>
       <div class="canvas-hint" id="canvasHint">
         <div class="canvas-hint-main">Your working space</div>
         <div class="canvas-hint-sub">Generate a question to begin</div>
@@ -513,7 +535,8 @@
 
   let isDrawing = false, tool = 'pen', color = '#1a1917', size = 2;
   let lx = 0, ly = 0, hasMark = false;
-  let curQ = '', curTopic = '', curDiff = '';
+  let curQ = '', curTopic = '', curDiff = '', lastSubmittedHash = '';
+  let inputMode = 'draw'; // 'draw' | 'type'
 
   // undo stack: array of ImageData snapshots
   let undoStack = [];
@@ -529,6 +552,50 @@
   renderStats();
   renderHistory();
   initKeyboard();
+
+  // ── CANVAS HASH ──
+  function canvasHash() {
+    const data = canvas.toDataURL('image/png');
+    let h = 0;
+    for (let i = 0; i < data.length; i++) {
+      h = (Math.imul(31, h) + data.charCodeAt(i)) | 0;
+    }
+    return h.toString();
+  }
+
+  // ── INPUT MODE ──
+  function setInputMode(mode) {
+    inputMode = mode;
+    const topbar = document.querySelector('.topbar');
+    const typeArea = document.getElementById('typeArea');
+    const mainCanvas = document.getElementById('mainCanvas');
+    const hint = document.getElementById('canvasHint');
+
+    if (mode === 'type') {
+      topbar.classList.add('type-mode');
+      typeArea.classList.add('visible');
+      mainCanvas.style.opacity = '0';
+      hint.style.display = 'none';
+      document.getElementById('toolType').classList.add('active');
+      document.getElementById('toolPen').classList.remove('active');
+      document.getElementById('toolEraser').classList.remove('active');
+      // enable submit if there's text and a question
+      typeArea.oninput = () => {
+        hasMark = typeArea.value.trim().length > 0;
+        document.getElementById('btnSubmit').disabled = !(curQ && hasMark);
+        if (hasMark) setStep(2);
+      };
+    } else {
+      topbar.classList.remove('type-mode');
+      typeArea.classList.remove('visible');
+      mainCanvas.style.opacity = '1';
+      document.getElementById('toolType').classList.remove('active');
+      setTool('pen');
+      // re-evaluate submit state
+      document.getElementById('btnSubmit').disabled = !(curQ && hasMark);
+      if (curQ) hint.style.display = hasMark ? 'none' : '';
+    }
+  }
 
   // ── CANVAS RESIZE ──
   function resizeCanvas() {
@@ -657,7 +724,9 @@
     document.getElementById('btnUndo').disabled = true;
     document.getElementById('canvasHint').style.display = '';
     document.getElementById('btnSubmit').disabled = true;
+    document.getElementById('btnSubmit').textContent = 'Submit working';
     document.getElementById('feedbackBlock').classList.remove('visible');
+    document.getElementById('typeArea').value = '';
     if (curQ) setStep(2);
     else setStep(1);
   }
@@ -705,6 +774,10 @@
       curQ = data.question;
       curTopic = topic;
       curDiff = diff;
+      lastSubmittedHash = '';
+      // reset type area
+      document.getElementById('typeArea').value = '';
+      hasMark = false;
 
       document.getElementById('questionText').textContent = data.question;
       document.getElementById('questionText').className = 'q-body';
@@ -724,18 +797,29 @@
 
     btn.disabled = false;
     btn.textContent = 'Generate question';
+    // re-enable submit for new question
+    document.getElementById('btnSubmit').textContent = 'Submit working';
   }
 
   // ── SUBMIT ──
   async function submitAnswer() {
     if (!curQ || !hasMark) return;
+
+    // in draw mode, check for resubmission
+    let currentHash = '';
+    if (inputMode === 'draw') {
+      currentHash = canvasHash();
+      if (currentHash === lastSubmittedHash) {
+        showError('Already submitted this working. Clear the canvas or generate a new question.');
+        return;
+      }
+    }
+
     const btn = document.getElementById('btnSubmit');
     btn.disabled = true;
     btn.textContent = 'Analysing…';
 
     setStep(3);
-
-    // show overlay on canvas
     document.getElementById('canvasOverlay').classList.add('visible');
 
     const fb = document.getElementById('feedbackBlock');
@@ -751,8 +835,35 @@
     verdict.textContent = '';
     detail.textContent = '';
 
+    // scroll left panel to show feedback
+    document.querySelector('.left-body').scrollTo({ top: 99999, behavior: 'smooth' });
+
     try {
-      const imageBase64 = canvas.toDataURL('image/png').split(',')[1];
+      let imageBase64;
+      if (inputMode === 'type') {
+        // render typed text onto canvas then capture
+        const typeArea = document.getElementById('typeArea');
+        const text = typeArea.value.trim();
+        const r = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        // fill white background
+        ctx.fillStyle = '#faf9f6';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#1a1917';
+        ctx.font = `${15 * dpr}px 'JetBrains Mono', monospace`;
+        ctx.textBaseline = 'top';
+        const lineH = 28 * dpr;
+        const pad = 20 * dpr;
+        text.split('\n').forEach((line, i) => {
+          ctx.fillText(line, pad, pad + i * lineH);
+        });
+        imageBase64 = canvas.toDataURL('image/png').split(',')[1];
+        // restore canvas to transparent
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      } else {
+        imageBase64 = canvas.toDataURL('image/png').split(',')[1];
+      }
+
       const res = await fetch('/api/mark', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -785,21 +896,18 @@
 
       // save to history
       history.unshift({
-        question: curQ,
-        topic: curTopic,
-        diff: curDiff,
-        status: data.status,
-        score: data.score,
-        verdict: data.verdict,
-        feedback: data.feedback,
-        time: Date.now()
+        question: curQ, topic: curTopic, diff: curDiff,
+        status: data.status, score: data.score,
+        verdict: data.verdict, feedback: data.feedback, time: Date.now()
       });
       if (history.length > 20) history.pop();
       saveHistory();
       renderHistory();
 
-      // scroll feedback into view on mobile
-      fb.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      // lock submit to prevent resubmission
+      if (inputMode === 'draw') lastSubmittedHash = currentHash;
+      btn.disabled = true;
+      btn.textContent = 'Submitted ✓';
 
     } catch (err) {
       pill.className = 'fb-pill p-clarify';
@@ -807,11 +915,11 @@
       verdict.textContent = 'Could not analyse. Please try again.';
       showError(err.message);
       setStep(2);
+      btn.disabled = false;
+      btn.textContent = 'Submit working';
     }
 
     document.getElementById('canvasOverlay').classList.remove('visible');
-    btn.disabled = false;
-    btn.textContent = 'Submit working';
   }
 
   // ── STATS ──
