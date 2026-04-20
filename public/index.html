@@ -477,11 +477,6 @@
       <div class="error-bar" id="errorBar"></div>
       <div class="divider"></div>
 
-      <div class="question-block">
-        <div class="q-tag"><span>Question</span><span id="diffPill"></span></div>
-        <div class="q-body q-placeholder" id="questionText">Generate a question to get started.</div>
-      </div>
-
       <div class="feedback-block" id="feedbackBlock">
         <div class="fb-head">
           <span class="fb-pill p-loading" id="fbPill">
@@ -792,9 +787,6 @@
 
     btn.disabled = true;
     btn.textContent = 'Generating…';
-    document.getElementById('questionText').textContent = 'Generating…';
-    document.getElementById('questionText').className = 'q-body q-placeholder';
-    document.getElementById('diffPill').textContent = '';
     const tq = document.getElementById('topbarQText');
     tq.textContent = 'Generating…';
     tq.classList.add('topbar-q-empty');
@@ -819,23 +811,16 @@
       document.getElementById('typeArea').value = '';
       hasMark = false;
 
-      document.getElementById('questionText').textContent = data.question;
-      document.getElementById('questionText').className = 'q-body';
       document.getElementById('canvasHint').querySelector('.canvas-hint-sub').textContent = 'Write your working on the right';
 
       // update topbar question pill
-      const tq = document.getElementById('topbarQText');
       tq.textContent = data.question;
       tq.classList.remove('topbar-q-empty');
-
-      const pill = document.getElementById('diffPill');
-      pill.textContent = diff + ' · ' + (data.marks || 2) + 'm';
-      pill.className = 'diff-pill diff-' + diff.toLowerCase();
 
       setStep(2);
 
     } catch (err) {
-      document.getElementById('questionText').textContent = 'Failed to generate. Try again.';
+      tq.textContent = 'Failed to generate. Try again.';
       showError(err.message);
       setStep(1);
     }
@@ -1014,11 +999,11 @@
     curQ = h.question;
     curTopic = h.topic;
     curDiff = h.diff;
-    document.getElementById('questionText').textContent = h.question;
-    document.getElementById('questionText').className = 'q-body';
-    const pill = document.getElementById('diffPill');
-    pill.textContent = h.diff + ' · ' + '2m';
-    pill.className = 'diff-pill diff-' + h.diff.toLowerCase();
+
+    // update topbar question pill
+    const tq = document.getElementById('topbarQText');
+    tq.textContent = h.question;
+    tq.classList.remove('topbar-q-empty');
 
     // restore feedback
     const fb = document.getElementById('feedbackBlock');
